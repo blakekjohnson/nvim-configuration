@@ -36,7 +36,6 @@ end
 
 vim.opt.rtp:prepend(lazypath)
 
-
 -- Install plugins
 require('lazy').setup({
   -- Kanagawa theme
@@ -70,14 +69,41 @@ vim.opt.termguicolors = true
 vim.cmd.colorscheme('kanagawa-dragon')
 
 -- Enable LSP Zero config
-local lsp_zero = require('lsp-zero')
+local lsp_zero = require('lsp-zero').preset({manage_nvim_cmp = false})
 lsp_zero.on_attach(function(client, bufnr)
   lsp_zero.default_keymaps({buffer = bufnr})
 end)
 
--- Enable language servers
+-- Haskell
 require('lspconfig').hls.setup({})
-lsp_zero.setup_servers({'hls'})
+-- Lua
+require('lspconfig').lua_ls.setup {
+  on_init = function(client)
+    local path = client.workspace_folders[1].name
+    if vim.loop.fs_stat(path..'/.luarc.json') or vim.loop.fs_stat(path..'/.luarc.jsonc') then
+      return
+    end
+
+    client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
+      runtime = {
+        version = 'LuaJIT'
+      },
+      workspace = {
+        checkThirdParty = false,
+        telemetry = { enable = false },
+        library = {
+          vim.env.VIMRUNTIME
+        }
+      }
+    })
+  end,
+  settings = {
+    Lua = {}
+  }
+}
+
+-- Enable language servers
+lsp_zero.setup_servers({'hls','lua_ls'})
 
 -- Autocompletion keybindings
 local cmp = require('cmp')
@@ -89,6 +115,10 @@ cmp.setup({
 
     -- Ctrl Space opens completion menu
     ['<C-Space>'] = cmp.mapping.complete(),
-  })
+
+    -- Scroll up and down in completion docs
+    ['<C-k>'] = cmp.mapping.scroll_docs(-4),
+    ['<C-j>'] = cmp.mapping.scroll_docs(4),
+  }),
 })
 
